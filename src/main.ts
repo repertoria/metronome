@@ -1,6 +1,8 @@
+import { App as NativeApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 import m from 'mithril'
 import './style.css'
-import { init, openPattern, setTab, state } from './state.ts'
+import { goBack, init, openPattern, setTab, state } from './state.ts'
 import { icon } from './ui/common.ts'
 import { PatternView, Transport } from './ui/pattern.ts'
 import { SimpleView } from './ui/simple.ts'
@@ -27,6 +29,17 @@ const App: m.Component = {
 }
 
 void init().then(() => m.mount(document.getElementById('app')!, App))
+
+// Android back: close an open sheet, then step back through the screens, then
+// leave the app in the background rather than quitting it.
+if (Capacitor.isNativePlatform()) {
+  void NativeApp.addListener('backButton', () => {
+    const backdrop = document.querySelector<HTMLElement>('.sheet-backdrop')
+    if (backdrop) backdrop.click()
+    else if (!goBack()) void NativeApp.minimizeApp()
+    m.redraw()
+  })
+}
 
 // Space bar toggles playback on desktop.
 document.addEventListener('keydown', (e) => {

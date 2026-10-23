@@ -1,4 +1,6 @@
 import m from 'mithril'
+import { KeepAwake } from '@capacitor-community/keep-awake'
+import { Capacitor } from '@capacitor/core'
 import { Engine, type Source, type Tick } from './audio.ts'
 import {
   ACCENT, NORMAL, SOFT, MAX_BPM, MIN_BPM, PatternSource, clamp, firstBarOf, migratePiece, plan, uid,
@@ -150,7 +152,7 @@ export function renamePattern(p: SavedPattern, name: string) {
 }
 
 export function duplicatePattern(p: SavedPattern) {
-  const piece: Piece = structuredClone(p.piece)
+  const piece: Piece = JSON.parse(JSON.stringify(p.piece)) // plain data; structuredClone needs a newer WebView
   for (const b of piece.blocks) b.id = uid()
   createPattern(`${p.name} copy`, piece)
 }
@@ -252,9 +254,21 @@ export function setTab(tab: Tab) {
   persist('nav')
 }
 
-// Keep the screen on while playing.
+/** Android back button: step out one level. Returns false when already at the top. */
+export function goBack() {
+  if (state.tab !== 'pattern') return false
+  setTab(state.editing || state.openId ? 'pattern' : 'simple')
+  return true
+}
+
+// Keep the screen on while playing. The app uses the native plugin; WebView
+// support for the Wake Lock API is patchy.
 let lock: { release(): Promise<void> } | null = null
 async function wakeLock(on: boolean) {
+  if (Capacitor.isNativePlatform()) {
+    await (on ? KeepAwake.keepAwake() : KeepAwake.allowSleep()).catch(() => {})
+    return
+  }
   try {
     if (on && !lock) {
       const wl = (navigator as { wakeLock?: { request(t: 'screen'): Promise<{ release(): Promise<void> }> } }).wakeLock

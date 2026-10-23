@@ -63,6 +63,7 @@ h1, h2 { margin: 0; }
 .app {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   height: 100dvh;
   max-width: 560px;
   margin: 0 auto;
@@ -499,6 +500,7 @@ input.text {
 .sheet {
   width: 100%;
   max-width: 560px;
+  max-height: 85vh;
   max-height: 85dvh;
   overflow-y: auto;
   background: var(--bg);

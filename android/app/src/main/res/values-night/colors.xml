@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Match the bg / surface tokens in src/style.css (dark). -->
+<resources>
+    <color name="app_bg">#0f1115</color>
+    <color name="app_surface">#181b21</color>
+</resources>

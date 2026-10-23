@@ -1,20 +1,17 @@
+import { Capacitor } from '@capacitor/core'
+import { Preferences } from '@capacitor/preferences'
+
 /**
- * Async key/value persistence. In the browser this is localStorage; for a
- * Capacitor build, swap in @capacitor/preferences, which has the same
- * get/set shape and keeps data in native storage the OS won't evict:
- *
- *   import { Preferences } from '@capacitor/preferences'
- *   export const kv: KeyValueStore = {
- *     get: async (key) => (await Preferences.get({ key })).value,
- *     set: (key, value) => Preferences.set({ key, value }),
- *   }
+ * Async key/value persistence. In the browser this is localStorage; in the
+ * Capacitor app it's native storage (Preferences), which the OS won't evict
+ * the way it can a WebView's localStorage.
  */
 export interface KeyValueStore {
   get(key: string): Promise<string | null>
   set(key: string, value: string): Promise<void>
 }
 
-export const kv: KeyValueStore = {
+const webStore: KeyValueStore = {
   async get(key) {
     try {
       return localStorage.getItem(key)
@@ -31,7 +28,15 @@ export const kv: KeyValueStore = {
   },
 }
 
+const nativeStore: KeyValueStore = {
+  get: async (key) => (await Preferences.get({ key })).value,
+  set: (key, value) => Preferences.set({ key, value }),
+}
+
+export const kv = Capacitor.isNativePlatform() ? nativeStore : webStore
+
 /** Ask the browser not to evict our data under storage pressure. */
 export function requestPersistence() {
+  if (Capacitor.isNativePlatform()) return
   void navigator.storage?.persist?.().catch(() => {})
 }

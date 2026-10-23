@@ -1,0 +1,59 @@
+[tools]
+node = "24"
+pnpm = "11.25.0"
+java = "temurin-21"
+
+[env]
+ANDROID_HOME = "/opt/android-sdk"
+
+[tasks.install]
+description = "Install JS dependencies"
+run = "pnpm install"
+
+[tasks.dev]
+description = "Vite dev server, reachable on the LAN"
+run = "pnpm vite --host"
+
+[tasks.test]
+description = "Run unit tests"
+run = "node --test 'test/*.test.ts'"
+
+[tasks.typecheck]
+run = "pnpm tsc"
+
+[tasks.build]
+description = "Typecheck and build the web app into dist/"
+depends = ["typecheck"]
+run = "pnpm vite build"
+
+[tasks.preview]
+depends = ["build"]
+run = "pnpm vite preview --host"
+
+[tasks.sync]
+description = "Build and copy the web app + plugins into the native projects"
+depends = ["build"]
+run = "pnpm cap sync"
+
+[tasks.android]
+description = "Build and run on a connected Android device or emulator"
+depends = ["sync"]
+run = "pnpm cap run android"
+
+[tasks."android:live"]
+description = "Run on Android with live reload from the Vite dev server (start `mise run dev` first)"
+run = """
+ip=$(ip route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+CAP_SERVER_URL="http://$ip:5173" pnpm cap sync android
+CAP_SERVER_URL="http://$ip:5173" pnpm cap run android
+"""
+
+[tasks."android:open"]
+description = "Open the project in Android Studio"
+run = "pnpm cap open android"
+
+[tasks."android:apk"]
+description = "Build a debug APK"
+depends = ["sync"]
+dir = "android"
+run = "./gradlew assembleDebug && echo android/app/build/outputs/apk/debug/app-debug.apk"

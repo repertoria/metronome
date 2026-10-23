@@ -12,9 +12,15 @@
     "test": "node --test 'test/*.test.ts'"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/preferences": "^8.0.1",
     "mithril": "^2.3.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@types/mithril": "^2.2.9",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"

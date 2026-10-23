@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Metronome</string>
+    <string name="title_activity_main">Metronome</string>
+    <string name="package_name">com.example.metronome</string>
+    <string name="custom_url_scheme">com.example.metronome</string>
+</resources>
