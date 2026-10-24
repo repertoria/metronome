@@ -1,7 +1,7 @@
 import m from 'mithril'
 import {
-  MAX_BPM, MIN_BPM, NOTE_VALUES, SILENT, SOFT, beatUnit, clamp, fromQpm, groupingLabel, groupings, makeBlock,
-  matchGrouping, modeOf, nextLevel, patternFor, plan, pulseUnit, pulsesPerBar, pulsesPerNote, repeatRanges, setFixed,
+  BAR, MAX_BPM, MIN_BPM, NOTE_VALUES, SILENT, SOFT, beatUnit, clamp, fromQpm, groupingLabel, groupings, makeBlock,
+  matchGrouping, modeOf, nextLevel, patternFor, pulseUnit, pulsesPerNote, repeatRanges, setFixed,
   setTargetBpm, setTargetQpm, setTargetUnit, targetBpm, tempos, uid, type Block, type BlockTempo, type NoteValue,
   type Piece, type RepeatRange, type TempoMode,
 } from '../pattern.ts'
@@ -35,8 +35,12 @@ function describe(piece: Piece, i: number, ts: BlockTempo[]): Described {
   const pu = pulseUnit(b.den)
   const mode = modeOf(piece, i)
   const ramp = mode === 'ramp' && !near(t.start, t.end)
-  const main = ramp ? [tempoChip(bu, t.start), m('span.arrow', '→'), tempoChip(bu, t.end)] : tempoChip(bu, t.start)
-  const pulse = near(bu, pu) || ramp ? null : tempoChip(pu, t.start)
+  // Lead with bars when that's how this block's tempo was entered.
+  const entered = i === 0 ? piece.startUnit : mode === 'set' || mode === 'ramp' ? b.unit : mode === 'equiv' ? b.equivNew : bu
+  const shown = entered === BAR ? BAR : bu
+  const chip = (q: number, unit = shown) => tempoChip(unit, q, b)
+  const main = ramp ? [chip(t.start), m('span.arrow', '→'), chip(t.end)] : chip(t.start)
+  const pulse = ramp ? null : shown === BAR ? chip(t.start, bu) : near(bu, pu) ? null : chip(t.start, pu)
   const anchor = b.fixed ? m('span.tag', 'fixed BPM') : m('span.tag', `${pct(b)} of start`)
 
   let detail: m.Children = 'Start tempo'
@@ -48,7 +52,7 @@ function describe(piece: Piece, i: number, ts: BlockTempo[]): Described {
         detail = near(bu, prevBeat) ? 'Same tempo as before' : ['Pulse unchanged: ', tempoChip(pu, prev), ' as before']
         break
       case 'set':
-        detail = [near(t.start, prev) ? 'Same tempo as before' : ['Sudden change, was ', tempoChip(bu, prev)], anchor]
+        detail = [near(t.start, prev) ? 'Same tempo as before' : ['Sudden change, was ', chip(prev)], anchor]
         break
       case 'ramp':
         detail = ramp
@@ -56,39 +60,16 @@ function describe(piece: Piece, i: number, ts: BlockTempo[]): Described {
           : 'Same tempo as before (set a different target to ramp)'
         break
       case 'equiv':
-        detail = ['New ', note(b.equivNew), ' = old ', note(b.equivOld), ' (', tempoChip(b.equivOld, prev), ')']
+        detail = ['New ', note(b.equivNew), ' = old ', note(b.equivOld), ' (', tempoChip(b.equivOld, prev, piece.blocks[i - 1]), ')']
         break
     }
   }
   return { main, pulse, detail }
 }
 
-/** Seconds for one pass through the piece, or null if it contains an endless loop. */
-function pieceLength(piece: Piece): number | null {
-  if (piece.blocks.some((b) => b.repeat === 0)) return null
-  const p = plan(piece)
-  let secs = 0
-  for (const fb of p.bars) {
-    const b = piece.blocks[fb.block]
-    const t = p.tempos[fb.block]
-    // ramp is linear in tempo per pulse; the bar's midpoint tempo is close enough for a summary
-    const q = t.start + ((t.end - t.start) * (fb.bar + 0.5)) / b.bars
-    secs += (pulsesPerBar(b) * pulseUnit(b.den) * 240) / q
-  }
-  return secs
-}
-
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
-
-let lengthCache = { version: -1, text: '' }
 function lengthText(piece: Piece): string {
-  if (lengthCache.version !== state.version) {
-    const bars = piece.blocks.reduce((n, b) => n + b.bars, 0)
-    const secs = pieceLength(piece)
-    const text = secs === null ? 'Loops until stopped' : `${clock(secs)}${piece.loop ? ', then loops' : ''}`
-    lengthCache = { version: state.version, text: `${plural(piece.blocks.length, 'block')} · ${plural(bars, 'bar')} · ${text}` }
-  }
-  return lengthCache.text
+  const bars = piece.blocks.reduce((n, b) => n + b.bars, 0)
+  return `${plural(piece.blocks.length, 'block')} · ${plural(bars, 'bar')}`
 }
 
 // ---- Shared controls ---------------------------------------------------------
@@ -110,7 +91,7 @@ function startTempoControl(piece: Piece) {
     m('.start-row', [
       m('button.note-btn', {
         type: 'button', class: showStartUnits ? 'on' : '', 'aria-expanded': String(showStartUnits),
-        'aria-label': `Counting in ${noteName(piece.startUnit)} notes. Change note value`,
+        'aria-label': `Counting in ${piece.startUnit === BAR ? 'bars' : noteName(piece.startUnit) + ' notes'}. Change note value`,
         onclick: () => (showStartUnits = !showStartUnits),
       }, note(piece.startUnit)),
       m('span.eq', '='),

@@ -17,8 +17,20 @@ export const nextLevel = (l: Level): Level => (l === SILENT ? ACCENT : l - 1) as
  */
 export type TempoMode = 'keep' | 'set' | 'ramp' | 'equiv'
 
-/** Note values are fractions of a whole note: 1/4 quarter, 3/8 dotted quarter… */
+/**
+ * Note values are fractions of a whole note: 1/4 quarter, 3/8 dotted quarter…
+ * BAR (0) stands for one whole bar of whichever block the tempo applies to.
+ */
 export type NoteValue = number
+export const BAR: NoteValue = 0
+
+export interface Meter {
+  num: number
+  den: number
+}
+
+/** The real length of a note value, resolving BAR against a meter. */
+export const unitIn = (unit: NoteValue, meter: Meter): NoteValue => (unit === BAR ? meter.num / meter.den : unit)
 
 export interface Block {
   id: string
@@ -56,9 +68,9 @@ export interface Piece {
 }
 
 export const MIN_BPM = 20
-export const MAX_BPM = 300
+export const MAX_BPM = 500
 export const DEFAULT_QPM = 120
-export const NOTE_VALUES: NoteValue[] = [1 / 16, 1 / 8, 3 / 16, 1 / 4, 3 / 8, 1 / 2, 3 / 4]
+export const NOTE_VALUES: NoteValue[] = [1 / 16, 1 / 8, 3 / 16, 1 / 4, 3 / 8, 1 / 2, 3 / 4, BAR]
 
 export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
@@ -67,7 +79,7 @@ export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.ma
 /** The dot grid is eighth notes for x/2, x/4 and x/8, sixteenths for x/16. */
 export const pulseUnit = (den: number): NoteValue => 1 / Math.max(den, 8)
 export const pulsesPerNote = (den: number) => Math.max(den, 8) / den
-export const pulsesPerBar = (b: { num: number; den: number }) => b.num * pulsesPerNote(b.den)
+export const pulsesPerBar = (b: Meter) => b.num * pulsesPerNote(b.den)
 
 /** The note value people usually count in for a meter: 6/8 → dotted quarter, 5/8 → eighth. */
 export function beatUnit(num: number, den: number): NoteValue {
@@ -88,16 +100,19 @@ export interface BlockTempo {
   end: number
 }
 
-export const startQpm = (p: Piece) => toQpm(p.startBpm, p.startUnit)
-export const targetQpm = (p: Piece, b: Block) => (b.fixed ? toQpm(b.bpm, b.unit) : b.rel * startQpm(p))
+const FALLBACK_METER: Meter = { num: 4, den: 4 }
+
+/** The start tempo is counted in the first block's meter (matters for BAR). */
+export const startQpm = (p: Piece) => toQpm(p.startBpm, unitIn(p.startUnit, p.blocks[0] ?? FALLBACK_METER))
+export const targetQpm = (p: Piece, b: Block) => (b.fixed ? toQpm(b.bpm, unitIn(b.unit, b)) : b.rel * startQpm(p))
 /** The set/ramp target in the block's own unit, as shown to the user. */
-export const targetBpm = (p: Piece, b: Block) => fromQpm(targetQpm(p, b), b.unit)
+export const targetBpm = (p: Piece, b: Block) => fromQpm(targetQpm(p, b), unitIn(b.unit, b))
 
 export function setTargetQpm(p: Piece, b: Block, qpm: number) {
-  if (b.fixed) b.bpm = Math.round(fromQpm(qpm, b.unit) * 10) / 10
+  if (b.fixed) b.bpm = Math.round(fromQpm(qpm, unitIn(b.unit, b)) * 10) / 10
   else b.rel = qpm / startQpm(p)
 }
-export const setTargetBpm = (p: Piece, b: Block, bpm: number) => setTargetQpm(p, b, toQpm(bpm, b.unit))
+export const setTargetBpm = (p: Piece, b: Block, bpm: number) => setTargetQpm(p, b, toQpm(bpm, unitIn(b.unit, b)))
 
 /** Re-read the shown number against a different note value. */
 export function setTargetUnit(p: Piece, b: Block, unit: NoteValue) {
@@ -126,7 +141,7 @@ export function tempos(piece: Piece): BlockTempo[] {
       case 'ramp': t = { start: prev, end: target }; break
       case 'equiv': {
         // new equivNew lasts as long as old equivOld
-        const q = (prev * b.equivNew) / b.equivOld
+        const q = (prev * unitIn(b.equivNew, b)) / unitIn(b.equivOld, piece.blocks[i - 1])
         t = { start: q, end: q }
         break
       }
@@ -345,54 +360,3 @@ export class PatternSource implements Source {
     return tick
   }
 }
-
-// ---- Examples --------------------------------------------------------------
-
-export const examples: { name: string; desc: string; make: () => Piece }[] = [
-  {
-    name: '6/8 ↔ 2/4',
-    desc: 'Alternating bars: 6/8 at dotted quarter = 60, 2/4 at quarter = 90. The eighth note stays constant.',
-    make: () => ({
-      startBpm: 60,
-      startUnit: 3 / 8,
-      loop: true,
-      blocks: [
-        makeBlock({ num: 6, den: 8, bars: 1 }),
-        makeBlock({ num: 2, den: 4, bars: 1, sub: true, repeat: 0, repeatSpan: 2 }),
-      ],
-    }),
-  },
-  {
-    name: '5/8 → 6/8',
-    desc: 'Ten bars of 5/8 clicking on 1 and 3, then one bar of 6/8 in dotted quarters.',
-    make: () => ({
-      startBpm: 240,
-      startUnit: 1 / 8,
-      loop: true,
-      blocks: [
-        makeBlock({ num: 5, den: 8, bars: 10, sub: false, groups: [2, 3] }),
-        makeBlock({ num: 6, den: 8, bars: 1, sub: false, groups: [3, 3] }),
-      ],
-    }),
-  },
-  {
-    name: '120 → 100',
-    desc: 'Four bars at quarter = 120, then three bars at 100. Change the start tempo and both scale together.',
-    make: () => ({
-      startBpm: 120,
-      startUnit: 1 / 4,
-      loop: true,
-      blocks: [makeBlock({ bars: 4 }), makeBlock({ bars: 3, tempoMode: 'set', rel: 100 / 120 })],
-    }),
-  },
-  {
-    name: 'Accelerando',
-    desc: 'Two bars at quarter = 80, then speed up gradually to 120 over eight bars, and hold.',
-    make: () => ({
-      startBpm: 80,
-      startUnit: 1 / 4,
-      loop: false,
-      blocks: [makeBlock({ bars: 2 }), makeBlock({ bars: 8, tempoMode: 'ramp', rel: 1.5 }), makeBlock({ bars: 4 })],
-    }),
-  },
-]

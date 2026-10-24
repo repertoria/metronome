@@ -1,7 +1,7 @@
 import m from 'mithril'
 import { MAX_BPM, MIN_BPM, clamp, nextLevel } from '../pattern.ts'
 import { simpleChanged, state, toggle } from '../state.ts'
-import { dots, hold, icon, note, segmented, stepper, tapTempo } from './common.ts'
+import { dots, hold, icon, stepper, tapTempo } from './common.ts'
 
 const MARKINGS: [number, string][] = [
   [40, 'Grave'], [60, 'Largo'], [66, 'Larghetto'], [76, 'Adagio'], [108, 'Andante'],
@@ -15,13 +15,6 @@ function setBpm(v: number) {
   state.simple.bpm = clamp(Math.round(v), MIN_BPM, MAX_BPM)
   simpleChanged()
 }
-
-const subdivs = () => [
-  { value: 1, label: note(1 / 4), title: 'Quarter notes' },
-  { value: 2, label: [note(1 / 8), note(1 / 8)], title: 'Eighth notes' },
-  { value: 3, label: m('span.trip', [note(1 / 8), note(1 / 8), note(1 / 8)]), title: 'Triplets' },
-  { value: 4, label: [note(1 / 16), note(1 / 16)], title: 'Sixteenth notes' },
-]
 
 export const SimpleView: m.Component = {
   view() {
@@ -53,7 +46,6 @@ export const SimpleView: m.Component = {
             simpleChanged()
           },
         }),
-        m('p.hint', 'Tap a beat to change it: accent → click → soft → silent'),
       ]),
 
       m('.settings', [
@@ -63,7 +55,7 @@ export const SimpleView: m.Component = {
         ]),
         m('.field', [
           m('span.field-label', 'Subdivision'),
-          segmented(s.subdiv, subdivs(), (v) => { s.subdiv = v; simpleChanged() }, '.notes'),
+          stepper({ get: () => s.subdiv, set: (v) => { s.subdiv = v; simpleChanged() }, min: 1, max: 8, label: 'clicks per beat' }),
         ]),
       ]),
 

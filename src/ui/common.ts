@@ -1,5 +1,5 @@
 import m from 'mithril'
-import { clamp, fromQpm, type Level, type NoteValue } from '../pattern.ts'
+import { BAR, clamp, fromQpm, unitIn, type Level, type Meter, type NoteValue } from '../pattern.ts'
 
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-9
 
@@ -8,10 +8,11 @@ const NOTE_NAMES: [NoteValue, string][] = [
   [3 / 8, 'dotted quarter'], [1 / 2, 'half'], [3 / 4, 'dotted half'], [1, 'whole'],
 ]
 
-export const noteName = (unit: NoteValue) => NOTE_NAMES.find(([v]) => near(v, unit))?.[1] ?? 'note'
+export const noteName = (unit: NoteValue) => (unit === BAR ? 'bar' : NOTE_NAMES.find(([v]) => near(v, unit))?.[1] ?? 'note')
 
 /** A small music-notation note glyph, drawn as SVG so it renders the same everywhere. */
 export function note(unit: NoteValue): m.Vnode {
+  if (unit === BAR) return m('span.bar-unit', { role: 'img', 'aria-label': 'bar' }, 'bar')
   const base = [1, 1 / 2, 1 / 4, 1 / 8, 1 / 16].find((b) => near(unit, b) || near(unit, b * 1.5)) ?? 1 / 4
   const dotted = near(unit, base * 1.5)
   const hollow = base >= 1 / 2
@@ -32,9 +33,9 @@ export function note(unit: NoteValue): m.Vnode {
 export const fmt = (n: number) => String(Math.round(n * 10) / 10)
 export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 
-/** "♩. = 60" */
-export const tempoChip = (unit: NoteValue, qpm: number) =>
-  m('span.tq', [note(unit), m('span', ' = ' + fmt(fromQpm(qpm, unit)))])
+/** "♩. = 60". `meter` resolves BAR to the bar it refers to. */
+export const tempoChip = (unit: NoteValue, qpm: number, meter: Meter = { num: 4, den: 4 }) =>
+  m('span.tq', [note(unit), m('span', ' = ' + fmt(fromQpm(qpm, unitIn(unit, meter))))])
 
 // ---- Press-and-hold repeat --------------------------------------------------
 
@@ -159,12 +160,28 @@ export function toggleSwitch(on: boolean, set: (v: boolean) => void, label: stri
 const LEVEL_NAMES = ['silent', 'soft', 'click', 'accent']
 
 /**
+ * Scale a dot row so it fits on one line. Everything in the row is sized as a
+ * multiple of --s, so its natural width is the current width divided by --s.
+ */
+function fitDots({ dom }: { dom: Element }) {
+  const row = dom as HTMLElement
+  const first = row.firstElementChild as HTMLElement | null
+  const last = row.lastElementChild as HTMLElement | null
+  if (!first || !last || !row.clientWidth) return
+  const s = parseFloat(row.style.getPropertyValue('--s')) || 1
+  const width = last.offsetLeft + last.offsetWidth - first.offsetLeft
+  const fit = Math.min(1, Math.floor((row.clientWidth / (width / s)) * 100) / 100)
+  if (fit !== s) row.style.setProperty('--s', String(fit))
+}
+window.addEventListener('resize', () => m.redraw())
+
+/**
  * A row of pulse dots. `beatEvery` adds a little gap every n pulses so x/4
  * eighth-note pairs read as beats.
  */
 export function dots(pattern: Level[], opts: { active?: number; onTap?: (i: number) => void; beatEvery?: number; small?: boolean }) {
   const every = opts.beatEvery ?? 1
-  return m('.dots', { class: opts.small ? 'small' : '' },
+  return m('.dots', { class: opts.small ? 'small' : '', oncreate: fitDots, onupdate: fitDots },
     pattern.map((lvl, i) =>
       m(opts.onTap ? 'button.dot' : 'span.dot', {
         key: i,

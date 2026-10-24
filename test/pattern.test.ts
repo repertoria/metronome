@@ -1,9 +1,60 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  ACCENT, NORMAL, SILENT, PatternSource, beatUnit, defaultPiece, examples, fromQpm, groupings, makeBlock, migratePiece,
+  ACCENT, BAR, NORMAL, SILENT, SOFT, PatternSource, beatUnit, defaultPiece, fromQpm, groupings, makeBlock, migratePiece,
   plan, setFixed, setTargetBpm, targetBpm, tempos, type Piece,
 } from '../src/pattern.ts'
+
+// ---- The spec's worked examples -------------------------------------------
+
+const examples: { name: string; desc: string; make: () => Piece }[] = [
+  {
+    name: '6/8 ↔ 2/4',
+    desc: 'Alternating bars: 6/8 at dotted quarter = 60, 2/4 at quarter = 90. The eighth note stays constant.',
+    make: () => ({
+      startBpm: 60,
+      startUnit: 3 / 8,
+      loop: true,
+      blocks: [
+        makeBlock({ num: 6, den: 8, bars: 1 }),
+        makeBlock({ num: 2, den: 4, bars: 1, sub: true, repeat: 0, repeatSpan: 2 }),
+      ],
+    }),
+  },
+  {
+    name: '5/8 → 6/8',
+    desc: 'Ten bars of 5/8 clicking on 1 and 3, then one bar of 6/8 in dotted quarters.',
+    make: () => ({
+      startBpm: 240,
+      startUnit: 1 / 8,
+      loop: true,
+      blocks: [
+        makeBlock({ num: 5, den: 8, bars: 10, sub: false, groups: [2, 3] }),
+        makeBlock({ num: 6, den: 8, bars: 1, sub: false, groups: [3, 3] }),
+      ],
+    }),
+  },
+  {
+    name: '120 → 100',
+    desc: 'Four bars at quarter = 120, then three bars at 100. Change the start tempo and both scale together.',
+    make: () => ({
+      startBpm: 120,
+      startUnit: 1 / 4,
+      loop: true,
+      blocks: [makeBlock({ bars: 4 }), makeBlock({ bars: 3, tempoMode: 'set', rel: 100 / 120 })],
+    }),
+  },
+  {
+    name: 'Accelerando',
+    desc: 'Two bars at quarter = 80, then speed up gradually to 120 over eight bars, and hold.',
+    make: () => ({
+      startBpm: 80,
+      startUnit: 1 / 4,
+      loop: false,
+      blocks: [makeBlock({ bars: 2 }), makeBlock({ bars: 8, tempoMode: 'ramp', rel: 1.5 }), makeBlock({ bars: 4 })],
+    }),
+  },
+]
 
 const piece = (startBpm: number, blocks: Piece['blocks'], startUnit = 1 / 4): Piece => ({ startBpm, startUnit, loop: false, blocks })
 
@@ -109,4 +160,36 @@ test('v1 pieces migrate to a start tempo with relative blocks', () => {
   assert.equal(p.startBpm, 120)
   close(fromQpm(tempos(p)[1].start, 1 / 4), 100)
   assert.equal(migratePiece(defaultPiece()).startBpm, 120)
+})
+
+test('tempo counted in bars: 5/8 in 2+3 at bar = 80', () => {
+  const p = piece(80, [makeBlock({ num: 5, den: 8, bars: 1, groups: [2, 3] })], BAR)
+  assert.deepEqual(p.blocks[0].pattern, [ACCENT, SOFT, NORMAL, SOFT, SOFT])
+  const ticks = run(p, 100)
+  assert.equal(ticks.length, 5)
+  // 80 bars a minute → each bar 0.75 s → each eighth 0.15 s (♪ = 400)
+  for (const t of ticks) close(t.dur, 0.15)
+  close(fromQpm(tempos(p)[0].start, 1 / 8), 400)
+})
+
+test('bar tempos follow each block\'s own meter', () => {
+  const p = piece(80, [
+    makeBlock({ num: 5, den: 8, bars: 1 }),
+    // new bar = old bar: the 6/8 bar lasts as long as the 5/8 bar did
+    makeBlock({ num: 6, den: 8, bars: 1, tempoMode: 'equiv', equivOld: BAR, equivNew: BAR }),
+    // fixed bar = 60 in 3/4: one bar per second
+    makeBlock({ num: 3, den: 4, bars: 1, tempoMode: 'set', fixed: true, unit: BAR, bpm: 60 }),
+  ], BAR)
+  const ticks = run(p, 100)
+  const barLen = (block: number) =>
+    ticks.filter((t) => (t.meta as { block: number }).block === block).reduce((s, t) => s + t.dur, 0)
+  close(barLen(0), 0.75)
+  close(barLen(1), 0.75)
+  close(barLen(2), 1)
+  close(targetBpm(p, p.blocks[2]), 60)
+  // a relative target shown in bars converts through the block's meter
+  setFixed(p, p.blocks[2], false)
+  setTargetBpm(p, p.blocks[2], 40)
+  close(targetBpm(p, p.blocks[2]), 40)
+  close(run(p, 100).slice(11).reduce((s, t) => s + t.dur, 0), 1.5)
 })

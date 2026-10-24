@@ -190,7 +190,6 @@ header.bar h1 small { font-weight: 500; color: var(--muted); font-size: 15px; }
 .seg.notes button { font-size: 22px; padding: 0 4px; }
 .seg.picker button { font-size: 20px; min-height: 42px; }
 .seg.wrap { flex-wrap: wrap; }
-.trip { position: relative; }
 
 .switch { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 0; font-weight: 500; }
 .switch-track { width: 46px; height: 28px; border-radius: 14px; background: var(--surface-2); position: relative; transition: background 0.15s; }
@@ -209,28 +208,29 @@ header.bar h1 small { font-weight: 500; color: var(--muted); font-size: 15px; }
 
 /* ---- Dots ---- */
 
-.dots { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0 4px; }
-.dot { width: 40px; height: 44px; display: inline-grid; place-items: center; border-radius: 10px; }
-.dot.gap { margin-left: 8px; }
+/* Dots stay on one line; dots() sets --s to shrink them when a bar has many pulses. */
+.dots { --s: 1; display: flex; flex-wrap: nowrap; gap: calc(4px * var(--s)); margin: 12px 0 4px; }
+.dot { flex: none; width: calc(40px * var(--s)); height: 44px; display: inline-grid; place-items: center; border-radius: calc(10px * var(--s)); }
+.dot.gap { margin-left: calc(8px * var(--s)); }
 .dot i {
   display: block;
   border-radius: 50%;
   transition: transform 0.06s, background 0.1s;
 }
-.dot.l3 i { width: 28px; height: 28px; background: var(--accent); }
-.dot.l2 i { width: 22px; height: 22px; background: var(--click); }
-.dot.l1 i { width: 13px; height: 13px; background: var(--soft); }
-.dot.l0 i { width: 13px; height: 13px; border: 2px solid var(--soft); opacity: 0.6; }
+.dot.l3 i { width: calc(28px * var(--s)); height: calc(28px * var(--s)); background: var(--accent); }
+.dot.l2 i { width: calc(22px * var(--s)); height: calc(22px * var(--s)); background: var(--click); }
+.dot.l1 i { width: calc(13px * var(--s)); height: calc(13px * var(--s)); background: var(--soft); }
+.dot.l0 i { width: calc(13px * var(--s)); height: calc(13px * var(--s)); border: 2px solid var(--soft); opacity: 0.6; }
 .dot.now { background: var(--accent-soft); }
 .dot.now i { transform: scale(1.25); }
 button.dot:active { background: var(--surface-2); }
 
-.dots.small { gap: 2px; margin: 8px 0 2px; }
-.dots.small .dot { width: 16px; height: 18px; border-radius: 5px; }
-.dots.small .dot.gap { margin-left: 4px; }
-.dots.small .l3 i { width: 12px; height: 12px; }
-.dots.small .l2 i { width: 9px; height: 9px; }
-.dots.small .l1 i, .dots.small .l0 i { width: 5px; height: 5px; }
+.dots.small { gap: calc(2px * var(--s)); margin: 8px 0 2px; }
+.dots.small .dot { width: calc(16px * var(--s)); height: 18px; border-radius: calc(5px * var(--s)); }
+.dots.small .dot.gap { margin-left: calc(4px * var(--s)); }
+.dots.small .l3 i { width: calc(12px * var(--s)); height: calc(12px * var(--s)); }
+.dots.small .l2 i { width: calc(9px * var(--s)); height: calc(9px * var(--s)); }
+.dots.small .l1 i, .dots.small .l0 i { width: calc(5px * var(--s)); height: calc(5px * var(--s)); }
 .dots.small .l0 i { border-width: 1px; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
@@ -273,9 +273,8 @@ button.dot:active { background: var(--surface-2); }
 .tap:active { background: var(--accent-soft); border-color: var(--accent); }
 
 .beats { margin: 18px 0 6px; }
-.beats .dots { justify-content: center; gap: 6px; }
-.beats .dot { width: 48px; height: 52px; }
-.beats .hint { text-align: center; }
+.beats .dots { justify-content: center; gap: calc(6px * var(--s)); }
+.beats .dot { width: calc(48px * var(--s)); height: 52px; }
 
 .settings { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 
@@ -404,7 +403,8 @@ button.dot:active { background: var(--surface-2); }
 .start-row { display: flex; align-items: center; gap: 8px; }
 .start-row .stepper { flex: 1; justify-content: space-between; }
 .note-btn {
-  width: 44px;
+  min-width: 44px;
+  padding: 0 8px;
   height: 44px;
   flex: none;
   border-radius: 12px;
@@ -532,3 +532,7 @@ input.text {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* "bar" stands in for a note glyph when a tempo is counted in whole bars. */
+.bar-unit { font-size: 0.72em; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
+.note-btn .bar-unit, .big-note .bar-unit { font-size: 15px; }
