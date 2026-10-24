@@ -135,10 +135,13 @@ export class Engine {
 function makeClicks(ctx: AudioContext): AudioBuffer[] {
   const voices: [freq: number, gain: number, decay: number][] = [
     [0, 0, 1],
-    [1100, 0.3, 140],
-    [1250, 0.75, 90],
-    [1900, 1, 70],
+    [1100, 0.36, 125],
+    [1250, 0.85, 75],
+    [1900, 1, 58],
   ]
+  // Gentle tanh saturation: louder clicks with peaks still under full scale.
+  const DRIVE = 1.6
+  const shape = (x: number) => Math.tanh(DRIVE * x) / Math.tanh(DRIVE)
   const sr = ctx.sampleRate
   return voices.map(([freq, gain, decay]) => {
     const len = Math.floor(sr * 0.06)
@@ -147,7 +150,7 @@ function makeClicks(ctx: AudioContext): AudioBuffer[] {
     for (let i = 0; i < len; i++) {
       const t = i / sr
       const env = Math.min(1, t * 3000) * Math.exp(-t * decay)
-      d[i] = gain * env * (0.75 * Math.sin(2 * Math.PI * freq * t) + 0.25 * Math.sin(2 * Math.PI * freq * 2.01 * t))
+      d[i] = shape(gain * env * (0.75 * Math.sin(2 * Math.PI * freq * t) + 0.25 * Math.sin(2 * Math.PI * freq * 2.01 * t)))
     }
     return buf
   })
