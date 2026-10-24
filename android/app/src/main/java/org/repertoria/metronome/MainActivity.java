@@ -1,4 +1,4 @@
-package com.example.metronome;
+package org.repertoria.metronome;
 
 import com.getcapacitor.BridgeActivity;
 

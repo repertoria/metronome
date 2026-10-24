@@ -4,7 +4,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 const url = process.env.CAP_SERVER_URL
 
 const config: CapacitorConfig = {
-  appId: 'com.example.metronome',
+  appId: 'org.repertoria.metronome',
   appName: 'Metronome',
   webDir: 'dist',
   plugins: {
