@@ -53,6 +53,8 @@ export const state = {
   playing: null as Tab | null,
   simplePos: null as SimplePos | null,
   patternPos: null as PatternPos | null,
+  /** bumped each time the active dot is hit, so it flashes even when the same dot repeats */
+  flash: 0,
 }
 
 export const openPattern = () => state.patterns.find((p) => p.id === state.openId)
@@ -200,8 +202,13 @@ class SimpleSource implements Source {
 export const engine = new Engine()
 
 engine.onTick = (meta) => {
-  if (state.playing === 'simple') state.simplePos = meta as SimplePos
-  else state.patternPos = meta as PatternPos
+  if (state.playing === 'simple') {
+    state.simplePos = meta as SimplePos
+    if (state.simplePos.sub === 0) state.flash++
+  } else {
+    state.patternPos = meta as PatternPos
+    state.flash++
+  }
   m.redraw()
 }
 

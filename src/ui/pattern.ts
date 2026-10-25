@@ -129,7 +129,7 @@ function blockCard(piece: Piece, i: number, ts: BlockTempo[], ranges: RepeatRang
         ownRepeat && m('span.rep', ownRepeat.times === 0 ? '∞ loop' : `×${ownRepeat.times}`),
         m('span.card-tempo', d.main),
       ]),
-      dots(b.pattern, { small: true, active: active ? pos!.pulse : undefined, beatEvery: pulsesPerNote(b.den) }),
+      dots(b.pattern, { small: true, active: active ? pos!.pulse : undefined, flash: state.flash, beatEvery: pulsesPerNote(b.den) }),
       m('.card-detail', active ? `Bar ${pos!.barInBlock + 1} of ${b.bars}` : d.detail),
     ]),
   ])
@@ -350,6 +350,7 @@ function editorView(piece: Piece, i: number) {
       toggleSwitch(b.sub, setSub, 'Subdivision clicks'),
       dots(b.pattern, {
         active: pos?.block === i ? pos.pulse : undefined,
+        flash: state.flash,
         beatEvery: pulsesPerNote(b.den),
         onTap: (k) => { b.pattern[k] = nextLevel(b.pattern[k]); changed() },
       }),

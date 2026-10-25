@@ -41,6 +41,7 @@ export const SimpleView: m.Component = {
       m('.beats', [
         dots(s.accents.slice(0, s.beats), {
           active: pos?.beat,
+          flash: state.flash,
           onTap: (i) => {
             s.accents[i] = nextLevel(s.accents[i])
             simpleChanged()

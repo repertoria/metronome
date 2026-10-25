@@ -179,14 +179,14 @@ window.addEventListener('resize', () => m.redraw())
  * A row of pulse dots. `beatEvery` adds a little gap every n pulses so x/4
  * eighth-note pairs read as beats.
  */
-export function dots(pattern: Level[], opts: { active?: number; onTap?: (i: number) => void; beatEvery?: number; small?: boolean }) {
+export function dots(pattern: Level[], opts: { active?: number; flash?: number; onTap?: (i: number) => void; beatEvery?: number; small?: boolean }) {
   const every = opts.beatEvery ?? 1
   return m('.dots', { class: opts.small ? 'small' : '', oncreate: fitDots, onupdate: fitDots },
     pattern.map((lvl, i) =>
       m(opts.onTap ? 'button.dot' : 'span.dot', {
         key: i,
         type: opts.onTap ? 'button' : undefined,
-        class: `l${lvl}${i === opts.active ? ' now' : ''}${every > 1 && i > 0 && i % every === 0 ? ' gap' : ''}`,
+        class: `l${lvl}${i === opts.active ? ` now f${(opts.flash ?? 0) % 2}` : ''}${every > 1 && i > 0 && i % every === 0 ? ' gap' : ''}`,
         'aria-label': opts.onTap ? `Pulse ${i + 1}: ${LEVEL_NAMES[lvl]}` : undefined,
         onclick: opts.onTap ? () => opts.onTap!(i) : undefined,
       }, m('i')),

@@ -223,6 +223,11 @@ header.bar h1 small { font-weight: 500; color: var(--muted); font-size: 15px; }
 .dot.l0 i { width: calc(13px * var(--s)); height: calc(13px * var(--s)); border: 2px solid var(--soft); opacity: 0.6; }
 .dot.now { background: var(--accent-soft); }
 .dot.now i { transform: scale(1.25); }
+/* Two identical animations: alternating f0/f1 restarts the flash even when the same dot plays again. */
+.dot.now.f0 i { animation: flash-0 0.2s ease-out; }
+.dot.now.f1 i { animation: flash-1 0.2s ease-out; }
+@keyframes flash-0 { from { transform: scale(1.6); filter: brightness(1.6); box-shadow: 0 0 0 4px var(--accent-soft), 0 0 14px var(--accent); } }
+@keyframes flash-1 { from { transform: scale(1.6); filter: brightness(1.6); box-shadow: 0 0 0 4px var(--accent-soft), 0 0 14px var(--accent); } }
 button.dot:active { background: var(--surface-2); }
 
 .dots.small { gap: calc(2px * var(--s)); margin: 8px 0 2px; }
