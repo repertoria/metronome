@@ -124,7 +124,6 @@ header.bar h1 small { font-weight: 500; color: var(--muted); font-size: 15px; }
 /* ---- Common controls ---- */
 
 .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
-.hint.center { text-align: center; margin-top: 16px; }
 
 .note { width: 0.72em; height: 1.05em; vertical-align: -0.12em; display: inline-block; }
 
@@ -420,7 +419,6 @@ button.dot:active { background: var(--surface-2); }
 }
 .note-btn.on { box-shadow: inset 0 0 0 2px var(--accent); }
 .tap.small { width: auto; padding: 0 14px; height: 44px; flex: none; }
-.hint.first { margin: 0 0 10px; }
 .tag {
   display: inline-block;
   margin-left: 6px;
@@ -451,7 +449,6 @@ header.bar h1 { min-width: 0; }
 .chev { width: 18px; height: 18px; color: var(--muted); flex: none; }
 .empty { text-align: center; padding: 48px 12px; }
 .empty h2 { font-size: 20px; }
-.empty p { color: var(--muted); margin: 8px 0 20px; }
 
 .btn.primary { background: var(--accent); color: var(--accent-ink); }
 .sheet-item.danger b { color: var(--danger); }

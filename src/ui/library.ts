@@ -20,7 +20,6 @@ export function libraryView() {
     patterns.length === 0
       ? m('.empty', [
           m('h2', 'No patterns yet'),
-          m('p', 'Build a sequence of meters, accents and tempo changes, then play it back at any tempo.'),
           m('button.btn.primary.wide', { type: 'button', onclick: newPattern }, 'Create a pattern'),
         ])
       : m('.cards', patterns.map((p) =>

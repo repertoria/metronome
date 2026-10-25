@@ -10,7 +10,7 @@ import {
   type SavedPattern,
 } from '../state.ts'
 import {
-  dots, fmt, icon, note, noteName, plural, segmented, sheet, stepper, tapTempo, tempoChip, toggleSwitch,
+  dots, icon, note, noteName, plural, segmented, sheet, stepper, tapTempo, tempoChip, toggleSwitch,
 } from './common.ts'
 import { libraryView } from './library.ts'
 
@@ -49,15 +49,15 @@ function describe(piece: Piece, i: number, ts: BlockTempo[]): Described {
     const prevBeat = beatUnit(piece.blocks[i - 1].num, piece.blocks[i - 1].den)
     switch (mode) {
       case 'keep':
-        detail = near(bu, prevBeat) ? 'Same tempo as before' : ['Pulse unchanged: ', tempoChip(pu, prev), ' as before']
+        detail = near(bu, prevBeat) ? 'Same tempo' : ['Same pulse, ', tempoChip(pu, prev)]
         break
       case 'set':
-        detail = [near(t.start, prev) ? 'Same tempo as before' : ['Sudden change, was ', chip(prev)], anchor]
+        detail = [near(t.start, prev) ? 'Same tempo' : ['was ', chip(prev)], anchor]
         break
       case 'ramp':
         detail = ramp
-          ? [t.end > t.start ? 'Speeds up' : 'Slows down', ` gradually over ${plural(b.bars, 'bar')}`, anchor]
-          : 'Same tempo as before (set a different target to ramp)'
+          ? [t.end > t.start ? '↗' : '↘', ` over ${plural(b.bars, 'bar')}`, anchor]
+          : 'Same tempo'
         break
       case 'equiv':
         detail = ['New ', note(b.equivNew), ' = old ', note(b.equivOld), ' (', tempoChip(b.equivOld, prev, piece.blocks[i - 1]), ')']
@@ -160,10 +160,9 @@ function openRename(p: SavedPattern) {
 function menuSheet(p: SavedPattern) {
   return sheet(closeSheet, [
     m('h2', p.name),
-    m('p.hint', `Saved automatically · last edited ${new Date(p.updated).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`),
     m('button.sheet-item', { type: 'button', onclick: () => openRename(p) }, [m('b', 'Rename')]),
     m('button.sheet-item', { type: 'button', onclick: () => { closeSheet(); duplicatePattern(p) } },
-      [m('b', 'Duplicate'), m('span', 'Make a copy to try out variations.')]),
+      [m('b', 'Duplicate')]),
     m('button.sheet-item.danger', {
       type: 'button',
       onclick: () => {
@@ -207,7 +206,6 @@ function patternView(p: SavedPattern) {
   const ts = tempos(piece)
   const ranges = repeatRanges(piece.blocks)
   const gutter = ranges.length ? Math.max(...ranges.map((r) => r.depth)) + 1 : 0
-  const fixedCount = piece.blocks.filter((b, i) => i > 0 && b.fixed && (b.tempoMode === 'set' || b.tempoMode === 'ramp')).length
   return m('.pattern', [
     m('header.bar', [
       m('button.icon-btn', { type: 'button', 'aria-label': 'All patterns', onclick: () => showPattern(null) }, icon.back()),
@@ -217,11 +215,9 @@ function patternView(p: SavedPattern) {
     m('section.panel', [
       m('h2', 'Start tempo'),
       startTempoControl(piece),
-      fixedCount > 0 && m('p.hint', `Tempo changes follow the start tempo, except ${plural(fixedCount, 'block')} with a fixed BPM.`),
     ]),
     m('.cards', piece.blocks.map((_, i) => blockCard(piece, i, ts, ranges, gutter))),
     m('button.add', { type: 'button', onclick: () => addBlock(piece) }, [icon.plus(), 'Add block']),
-    m('p.hint.center', 'Tap a block to edit its meter, clicks, tempo and repeats.'),
     sheetMode === 'menu' && menuSheet(p),
     sheetMode === 'rename' && renameSheet(p),
   ])
@@ -229,11 +225,11 @@ function patternView(p: SavedPattern) {
 
 // ---- Block editor -------------------------------------------------------------
 
-const MODES: { value: TempoMode; label: string; help: string }[] = [
-  { value: 'keep', label: 'Same', help: 'Notes keep moving at the same speed as the previous block, so the pulse stays steady through a meter change.' },
-  { value: 'set', label: 'New', help: 'Jump straight to a new tempo at the start of this block.' },
-  { value: 'ramp', label: 'Gradual', help: 'Speed up or slow down smoothly from the previous tempo, arriving at the target by the end of this block.' },
-  { value: 'equiv', label: 'Note = note', help: 'Metric modulation: one note value in this block lasts exactly as long as another did in the previous block.' },
+const MODES: { value: TempoMode; label: string }[] = [
+  { value: 'keep', label: 'Same' },
+  { value: 'set', label: 'New' },
+  { value: 'ramp', label: 'Gradual' },
+  { value: 'equiv', label: 'Note = note' },
 ]
 
 function targetInput(piece: Piece, b: Block, label: string) {
@@ -253,9 +249,6 @@ function targetInput(piece: Piece, b: Block, label: string) {
       ]),
     ]),
     toggleSwitch(b.fixed, (v) => { setFixed(piece, b, v); changed() }, 'Fixed BPM'),
-    m('p.hint', b.fixed
-      ? `Always ${noteName(b.unit)} = ${fmt(b.bpm)}, whatever the start tempo.`
-      : `${pct(b)} of the start tempo, so it moves when you change the start tempo.`),
   ]
 }
 
@@ -310,7 +303,6 @@ function editorView(piece: Piece, i: number) {
 
   const repeatMode = b.repeat === 1 ? 'off' : b.repeat === 0 ? 'loop' : 'times'
   const span = clamp(b.repeatSpan, 1, i + 1)
-  const covered = span === 1 ? `Block ${i + 1}` : `Blocks ${i - span + 2}–${i + 1}`
 
   return m('.editor', [
     m('header.bar', [
@@ -360,14 +352,12 @@ function editorView(piece: Piece, i: number) {
         m('span', [m('span.dot.l1', m('i')), 'Soft']),
         m('span', [m('span.dot.l0', m('i')), 'Silent']),
       ]),
-      m('p.hint', `One dot per ${pulseUnit(b.den) === 1 / 8 ? 'eighth' : 'sixteenth'} note. Tap a dot to cycle it.`),
     ]),
 
     section('Tempo', i === 0
-      ? [m('p.hint.first', 'The first block plays at the pattern’s start tempo. Later blocks can change it.'), startTempoControl(piece)]
+      ? startTempoControl(piece)
       : [
-          segmented(mode, MODES.map((x) => ({ value: x.value, label: x.label })), setMode, '.wrap'),
-          m('p.hint', MODES.find((x) => x.value === mode)!.help),
+          segmented(mode, MODES, setMode, '.wrap'),
           mode === 'set' && targetInput(piece, b, 'New tempo'),
           mode === 'ramp' && targetInput(piece, b, 'Target tempo at the end of the block'),
           mode === 'equiv' && [
@@ -394,9 +384,6 @@ function editorView(piece: Piece, i: number) {
           m('span.field-label', 'Bracket covers'),
           stepper({ get: () => span, set: (v) => { b.repeatSpan = v; changed() }, min: 1, max: i + 1, label: 'blocks', suffix: span === 1 ? 'block' : 'blocks' }),
         ]),
-        m('p.hint', repeatMode === 'loop'
-          ? `${covered} loop until you press stop — handy for practice. Blocks after this one won't play.`
-          : `${covered} play ${b.repeat} times, then the piece continues.`),
       ],
     ]),
 
